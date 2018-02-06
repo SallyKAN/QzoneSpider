@@ -3,6 +3,12 @@ package main;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,9 +18,9 @@ import java.util.Properties;
 
 public class Login {
     public static Map<String, String> cookies;
-    public static void main(String args[])throws IOException{
+    public static void main(String args[])throws IOException {
         Properties props = new Properties();
-        try(InputStream in = Files.newInputStream(Paths.get("resource/login.properties"))){
+        try (InputStream in = Files.newInputStream(Paths.get("resource/login.properties"))) {
             props.load(in);
         }
 //        System.out.println(System.getProperty("user.dir"));
@@ -24,6 +30,37 @@ public class Login {
         String verifycode = "";
         String verifysession = "";
         String p = "";
+        p = encryptPassword(uin, password, verifycode);
+        String login_result = login(uin, p, checkStatus, verifycode, verifysession);
+        System.out.println(login_result.split(",")[4]+","+login_result.split(",")[5]);
+//        String checkResult = login(uin);
+//        System.out.println(checkResult);
+//
+//        if ("0".equals(checkResult.charAt(14) + "")) {
+//            System.out.println("无需验证码登录！");
+//            checkStatus = "0";
+//            verifycode = checkResult.split(",")[1].replaceAll("\'", "");
+//            verifysession = checkResult.split(",")[3].replaceAll("\'", "");
+//        }
+    }
+    public static String encryptPassword(String uin, String password, String verifycode) {
+        String p_result = "";
+        try {
+            ScriptEngineManager sem = new ScriptEngineManager();
+            ScriptEngine engine = sem.getEngineByName("js");
+            FileReader fr = new FileReader("resources/login.js");
+            engine.eval(fr);
+            Invocable inv = (Invocable) engine;
+            p_result = inv.invokeFunction("getEncryption", password,
+                    uin, verifycode).toString();
+        } catch (ScriptException e1) {
+            e1.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e2) {
+            e2.printStackTrace();
+        }
+        return p_result;
     }
     public static String login(String uin, String p, String checkStatus, String verifycode,
                                String verifysession) throws IOException {
@@ -53,7 +90,5 @@ public class Login {
         Connection.Response response = connection.execute();
         cookies = response.cookies();
         return response.body();
-
-
     }
 }
